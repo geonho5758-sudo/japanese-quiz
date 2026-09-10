@@ -158,7 +158,7 @@ kbd{
   <button class="start" id="go">시작하기</button>
   <p class="hint-line">
     <kbd>P</kbd> 문제 고르기 · <kbd>Space</kbd> 힌트 → 정답 · <kbd>Enter</kbd> 바로 정답<br>
-    <kbd>1</kbd> <kbd>2</kbd> 점수 +1 · <kbd>Shift</kbd>+<kbd>1</kbd>/<kbd>2</kbd> 점수 −1 · <kbd>→</kbd> 다음 문제
+    <kbd>1</kbd> <kbd>2</kbd> 점수 +1 · <kbd>Shift</kbd>+<kbd>1</kbd>/<kbd>2</kbd> 점수 −1 · <kbd>←</kbd>/<kbd>→</kbd> 이전·다음 문제
   </p>
 </section>
 
@@ -187,7 +187,7 @@ kbd{
   <div class="bar">
     <span><b>Space</b> 힌트 · <b>Enter</b> 정답</span>
     <span><b>1</b>/<b>2</b> 득점 · <b>Shift+1</b>/<b>2</b> 감점</span>
-    <span><b>→</b> 다음 · <b>P</b> 문제표</span>
+    <span><b>←</b> 이전 · <b>→</b> 다음 · <b>P</b> 문제표</span>
   </div>
 </section>
 
@@ -240,6 +240,23 @@ function render(){
 
 function load(q){ cur = q; step = 0; render(); }
 
+let history = [];
+let histPos = -1;
+
+function visit(q){
+  history = history.slice(0, histPos + 1);
+  history.push(q);
+  histPos = history.length - 1;
+  load(q);
+}
+
+function prev(){
+  if(histPos > 0){
+    histPos--;
+    load(history[histPos]);
+  }
+}
+
 function bump(i, d){
   score[i] = Math.max(0, score[i] + d);
   $('s' + (i + 1)).textContent = score[i];
@@ -251,7 +268,7 @@ function bump(i, d){
 function next(){
   const pool = QUESTIONS.filter(q => q.level === cur.level);
   const rest = pool.filter(q => !done.has(q.id));
-  if(rest.length) load(rest[0]);
+  if(rest.length) visit(rest[0]);
   else openPicker();
 }
 
@@ -260,8 +277,8 @@ function grid(){
   $('grid').innerHTML = pool.length ? pool.map((q, i) =>
     '<button class="cell' + (done.has(q.id) ? ' done' : '') + '" data-id="' + q.id + '">' +
     '<span class="n">' + (i + 1) + '</span>' +
-    '<div class="w">' + q.word + '</div>' +
-    '<div class="k">' + (q.meaning || '') + '</div></button>'
+    '<div class="w">문제 ' + (i + 1) + '</div>' +
+    '<div class="k">' + (q.hints && q.hints[0] ? q.hints[0] : '') + '</div></button>'
   ).join('') : '<div class="empty">이 난이도에 등록된 문제가 없어요<br>questions.js에 추가해주세요</div>';
 }
 
@@ -272,7 +289,7 @@ $('go').onclick = () => {
   $('n2').textContent = $('f2').value.trim() || '2팀';
   $('setup').classList.remove('on');
   $('board').classList.add('on');
-  if(QUESTIONS.length) load(QUESTIONS[0]);
+  if(QUESTIONS.length) visit(QUESTIONS[0]);
   openPicker();
 };
 
@@ -289,7 +306,7 @@ $('grid').onclick = e => {
   const c = e.target.closest('.cell');
   if(!c) return;
   $('picker').classList.remove('on');
-  load(QUESTIONS.find(q => q.id === c.dataset.id));
+  visit(QUESTIONS.find(q => q.id === c.dataset.id));
 };
 
 document.addEventListener('keydown', e => {
@@ -303,6 +320,7 @@ document.addEventListener('keydown', e => {
   if(k === ' '){ e.preventDefault(); if(step <= cur.hints.length){ step++; render(); } return; }
   if(k === 'Enter'){ e.preventDefault(); step = cur.hints.length + 1; render(); return; }
   if(k === 'ArrowRight'){ e.preventDefault(); next(); return; }
+  if(k === 'ArrowLeft'){ e.preventDefault(); prev(); return; }
   if(k === '1'){ bump(0, 1); return; }
   if(k === '2'){ bump(1, 1); return; }
   if(k === '!'){ bump(0, -1); return; }
